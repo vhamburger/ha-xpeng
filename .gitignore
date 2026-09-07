@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# macOS
+.DS_Store
+
+# Temporary & Data files (never commit raw telemetry or CSV dumps)
+data/
+*.csv
+*.zip
+*.tar.gz
+*.log
+
+# Environment & IDE
+.env
+.venv
+venv/
+.idea/
+.vscode/

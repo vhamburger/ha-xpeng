@@ -1,0 +1,98 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add XPENG Vehicle",
+        "description": "Choose vehicle name and preferred import method.",
+        "data": {
+          "vehicle_name": "Vehicle Name (e.g. Lexi)",
+          "mode": "Import Mode"
+        }
+      },
+      "local_dir": {
+        "title": "Local Directory (CSV / ZIP Drop)",
+        "description": "Specify the folder path where you place exported CSV files or ZIP archives.",
+        "data": {
+          "data_dir": "Folder Path"
+        }
+      },
+      "api": {
+        "title": "XPENG Open Platform API",
+        "description": "Enter your credentials from the XPENG Open Platform.",
+        "data": {
+          "app_id": "App ID",
+          "app_secret": "App Secret",
+          "open_id": "Open ID",
+          "access_token": "Access Token",
+          "data_dir": "Local Cache Folder"
+        }
+      }
+    },
+    "error": {
+      "cannot_create_dir": "Cannot create the specified directory."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure XPENG Settings",
+        "data": {
+          "cleanup_processed_files": "Delete files after successful import (save storage)",
+          "home_charge_enabled": "Automatically classify home wallbox charging",
+          "home_charge_min_power": "Minimum home charging power (kW)",
+          "home_charge_max_power": "Maximum home charging power (kW)",
+          "home_charge_start_hour": "Night charging window start (hour 0-23)",
+          "home_charge_end_hour": "Night charging window end (hour 0-23)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "energy_charged": {
+        "name": "Total Energy Charged"
+      },
+      "home_energy_charged": {
+        "name": "Home Energy Charged"
+      },
+      "last_charge_energy": {
+        "name": "Last Charge Energy"
+      },
+      "battery_level": {
+        "name": "Battery Level"
+      },
+      "range": {
+        "name": "Range"
+      },
+      "odometer": {
+        "name": "Odometer"
+      },
+      "battery_temp_max": {
+        "name": "Battery Temperature Max"
+      },
+      "battery_temp_min": {
+        "name": "Battery Temperature Min"
+      },
+      "battery_voltage": {
+        "name": "Battery Voltage"
+      },
+      "tire_pressure_front_left": {
+        "name": "Tire Pressure Front Left"
+      },
+      "tire_pressure_front_right": {
+        "name": "Tire Pressure Front Right"
+      },
+      "tire_pressure_rear_left": {
+        "name": "Tire Pressure Rear Left"
+      },
+      "tire_pressure_rear_right": {
+        "name": "Tire Pressure Rear Right"
+      }
+    },
+    "button": {
+      "sync_data": {
+        "name": "Sync Data Now"
+      }
+    }
+  }
+}

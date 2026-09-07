@@ -1,0 +1,98 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "XPENG Fahrzeug hinzufügen",
+        "description": "Wähle den Fahrzeugnamen und die bevorzugte Importmethode.",
+        "data": {
+          "vehicle_name": "Fahrzeugname (z.B. Lexi)",
+          "mode": "Import-Modus"
+        }
+      },
+      "local_dir": {
+        "title": "Lokaler Ordner (CSV / ZIP Drop)",
+        "description": "Gib den Ordnerpfad an, in dem du exportierte CSV-Dateien oder ZIP-Archive ablegst.",
+        "data": {
+          "data_dir": "Ordnerpfad"
+        }
+      },
+      "api": {
+        "title": "XPENG Open Platform API",
+        "description": "Gib deine API-Zugangsdaten von der XPENG Open Platform ein.",
+        "data": {
+          "app_id": "App ID",
+          "app_secret": "App Secret",
+          "open_id": "Open ID",
+          "access_token": "Access Token",
+          "data_dir": "Lokaler Zwischenspeicher-Ordner"
+        }
+      }
+    },
+    "error": {
+      "cannot_create_dir": "Der angegebene Ordner konnte nicht erstellt werden."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "XPENG Einstellungen anpassen",
+        "data": {
+          "cleanup_processed_files": "Dateien nach erfolgreichem Import löschen (Speicher sparen)",
+          "home_charge_enabled": "Heimladungen an der Wallbox automatisch erkennen",
+          "home_charge_min_power": "Minimale Ladeleistung für Wallbox (kW)",
+          "home_charge_max_power": "Maximale Ladeleistung für Wallbox (kW)",
+          "home_charge_start_hour": "Nachtladefenster Start (Stunde 0-23)",
+          "home_charge_end_hour": "Nachtladefenster Ende (Stunde 0-23)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "energy_charged": {
+        "name": "Ladeenergie Gesamt"
+      },
+      "home_energy_charged": {
+        "name": "Ladeenergie Zuhause"
+      },
+      "last_charge_energy": {
+        "name": "Letzte Ladung"
+      },
+      "battery_level": {
+        "name": "Batterieladestand"
+      },
+      "range": {
+        "name": "Reichweite"
+      },
+      "odometer": {
+        "name": "Kilometerstand"
+      },
+      "battery_temp_max": {
+        "name": "Batterietemperatur Max"
+      },
+      "battery_temp_min": {
+        "name": "Batterietemperatur Min"
+      },
+      "battery_voltage": {
+        "name": "Batteriespannung"
+      },
+      "tire_pressure_front_left": {
+        "name": "Reifendruck Vorne Links"
+      },
+      "tire_pressure_front_right": {
+        "name": "Reifendruck Vorne Rechts"
+      },
+      "tire_pressure_rear_left": {
+        "name": "Reifendruck Hinten Links"
+      },
+      "tire_pressure_rear_right": {
+        "name": "Reifendruck Hinten Rechts"
+      }
+    },
+    "button": {
+      "sync_data": {
+        "name": "Daten jetzt synchronisieren"
+      }
+    }
+  }
+}

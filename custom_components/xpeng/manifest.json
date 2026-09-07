@@ -1,0 +1,11 @@
+{
+  "domain": "xpeng",
+  "name": "XPENG Vehicles",
+  "codeowners": ["@vham"],
+  "config_flow": true,
+  "documentation": "https://github.com/vham/ha-xpeng",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/vham/ha-xpeng/issues",
+  "version": "1.0.0"
+}
