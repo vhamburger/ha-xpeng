@@ -105,23 +105,39 @@ class XpengCsvParser:
 
         processed_files: list[str] = []
 
-        # Check for ZIP archives first and extract them
-        zip_files = glob.glob(os.path.join(directory_path, "*.zip"))
-        for zip_path in zip_files:
-            try:
-                with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                    zip_ref.extractall(directory_path)
-                processed_files.append(zip_path)
-            except Exception as err:
-                _LOGGER.error("Failed to extract zip file %s: %s", zip_path, err)
+        # 1. Find all ZIP files (recursive and case-insensitive)
+        for root, _, files in os.walk(directory_path):
+            for file in files:
+                if file.lower().endswith(".zip"):
+                    zip_path = os.path.join(root, file)
+                    try:
+                        _LOGGER.info("Extracting XPENG ZIP archive: %s", zip_path)
+                        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                            zip_ref.extractall(directory_path)
+                        processed_files.append(zip_path)
+                    except Exception as err:
+                        _LOGGER.error("Failed to extract zip file %s: %s", zip_path, err)
 
-        # Locate the 3 CSV categories
-        power_files = glob.glob(os.path.join(directory_path, "*driving_power_energy*.csv"))
-        operation_files = glob.glob(os.path.join(directory_path, "*driving_operation*.csv"))
-        status_files = glob.glob(os.path.join(directory_path, "*driving_status*.csv"))
+        # 2. Locate the 3 CSV categories (recursive across any subfolder and case-insensitive)
+        power_files: list[str] = []
+        operation_files: list[str] = []
+        status_files: list[str] = []
+
+        for root, _, files in os.walk(directory_path):
+            for file in files:
+                lower = file.lower()
+                if not lower.endswith(".csv"):
+                    continue
+                full_path = os.path.join(root, file)
+                if "power_energy" in lower:
+                    power_files.append(full_path)
+                elif "operation" in lower:
+                    operation_files.append(full_path)
+                elif "status" in lower:
+                    status_files.append(full_path)
 
         if not power_files and not operation_files and not status_files:
-            _LOGGER.debug("No XPENG CSV files found in %s", directory_path)
+            _LOGGER.warning("No XPENG CSV files found in %s (searched subfolders)", directory_path)
             return None, processed_files
 
         data = XpengParsedData()

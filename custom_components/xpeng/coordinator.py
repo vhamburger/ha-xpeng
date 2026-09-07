@@ -208,4 +208,14 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
                 except Exception as err:
                     _LOGGER.error("Failed to delete processed file %s: %s", file_path, err)
 
+            # Also remove any empty subdirectories left behind by zip extraction
+            for root, dirs, _ in os.walk(self.data_dir, topdown=False):
+                for d in dirs:
+                    d_path = os.path.join(root, d)
+                    try:
+                        if not os.listdir(d_path):
+                            os.rmdir(d_path)
+                    except Exception:
+                        pass
+
         return parsed_data
