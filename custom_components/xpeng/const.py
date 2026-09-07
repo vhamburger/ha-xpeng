@@ -4,6 +4,7 @@ DOMAIN = "xpeng"
 
 # Configuration keys
 CONF_VEHICLE_NAME = "vehicle_name"
+CONF_VEHICLE_MODEL = "vehicle_model"
 CONF_MODE = "mode"
 CONF_DATA_DIR = "data_dir"
 CONF_APP_ID = "app_id"
@@ -22,6 +23,30 @@ CONF_HOME_CHARGE_END_HOUR = "home_charge_end_hour"
 # Modes
 MODE_LOCAL_DIR = "local_dir"
 MODE_API = "api"
+
+# Models
+MODEL_AUTO = "auto"
+XPENG_MODELS = {
+    "auto": "Auto-Detect from Vehicle Data",
+    "X9": "XPENG X9 (MPV)",
+    "G6": "XPENG G6 (Coupe SUV)",
+    "G9": "XPENG G9 (Flagship SUV)",
+    "P7": "XPENG P7 / P7i (Sedan)",
+    "P7+": "XPENG P7+ (AI Sedan)",
+    "G3i": "XPENG G3 / G3i (Compact SUV)",
+    "M03": "XPENG MONA M03",
+    "Other": "Other XPENG Model",
+}
+
+# Internal OEM Platform / Project Codes to Commercial Model Names
+VMODEL_CODE_MAP = {
+    "H93": "X9",
+    "F97": "G6",
+    "F95": "G9",
+    "E28": "P7",
+    "F57": "P7+",
+    "F59": "MONA M03",
+}
 
 # Defaults
 DEFAULT_VEHICLE_NAME = "XPENG"

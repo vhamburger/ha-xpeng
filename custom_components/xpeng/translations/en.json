@@ -6,6 +6,7 @@
         "description": "Choose vehicle name and preferred import method.",
         "data": {
           "vehicle_name": "Vehicle Name (e.g. My XPENG)",
+          "vehicle_model": "Vehicle Model",
           "mode": "Import Mode"
         }
       },
@@ -37,6 +38,7 @@
       "init": {
         "title": "Configure XPENG Settings",
         "data": {
+          "vehicle_model": "Vehicle Model",
           "cleanup_processed_files": "Delete files after successful import (save storage)",
           "home_charge_enabled": "Automatically classify home wallbox charging",
           "home_charge_min_power": "Minimum home charging power (kW)",

@@ -6,6 +6,7 @@
         "description": "Wähle den Fahrzeugnamen und die bevorzugte Importmethode.",
         "data": {
           "vehicle_name": "Fahrzeugname (z.B. Mein XPENG)",
+          "vehicle_model": "Fahrzeugmodell",
           "mode": "Import-Modus"
         }
       },
@@ -37,6 +38,7 @@
       "init": {
         "title": "XPENG Einstellungen anpassen",
         "data": {
+          "vehicle_model": "Fahrzeugmodell",
           "cleanup_processed_files": "Dateien nach erfolgreichem Import löschen (Speicher sparen)",
           "home_charge_enabled": "Heimladungen an der Wallbox automatisch erkennen",
           "home_charge_min_power": "Minimale Ladeleistung für Wallbox (kW)",

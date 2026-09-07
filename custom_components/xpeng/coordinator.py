@@ -26,6 +26,7 @@ from .const import (
     CONF_HOME_CHARGE_START_HOUR,
     CONF_MODE,
     CONF_OPEN_ID,
+    CONF_VEHICLE_MODEL,
     CONF_VEHICLE_NAME,
     DEFAULT_CLEANUP_FILES,
     DEFAULT_DATA_DIR,
@@ -38,6 +39,8 @@ from .const import (
     DOMAIN,
     MODE_API,
     MODE_LOCAL_DIR,
+    MODEL_AUTO,
+    VMODEL_CODE_MAP,
 )
 from .parser import XpengCsvParser, XpengParsedData
 
@@ -114,6 +117,22 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
     def cleanup_files(self) -> bool:
         """Return whether processed files should be deleted to save disk space."""
         return self.entry.options.get(CONF_CLEANUP_FILES, DEFAULT_CLEANUP_FILES)
+
+    @property
+    def resolved_model(self) -> str:
+        """Resolve commercial vehicle model from user setting or telemetry code."""
+        configured_model = self.entry.data.get(CONF_VEHICLE_MODEL, MODEL_AUTO)
+        if configured_model and configured_model != MODEL_AUTO:
+            return f"XPENG {configured_model}" if not configured_model.startswith("XPENG") else configured_model
+
+        raw_model = self.data.vmodel if self.data and self.data.vmodel else ""
+        if raw_model:
+            for prefix, name in VMODEL_CODE_MAP.items():
+                if raw_model.startswith(prefix) or prefix in raw_model:
+                    return f"XPENG {name}"
+            return f"XPENG {raw_model}"
+
+        return "XPENG Vehicle"
 
     async def _async_setup(self) -> None:
         """Load stored persistent data on startup."""

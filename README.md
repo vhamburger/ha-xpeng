@@ -72,7 +72,7 @@ You can obtain vehicle data in two ways:
 
 1. In Home Assistant, navigate to **Settings** $\rightarrow$ **Devices & Services** $\rightarrow$ **Add Integration**.
 2. Search for **XPENG Vehicles**.
-3. Choose your vehicle name (e.g. `My XPENG`, `X9`) and your preferred import mode:
+3. Choose your vehicle name (e.g. `My XPENG`), vehicle model (Auto-Detect or pick your model from the dropdown), and your preferred import mode:
    * **Local Directory:** Enter the path where you drop CSVs/ZIPs (default: `/config/xpeng`).
    * **XPENG Open Platform API:** Enter your `appId`, `appSecret`, `openId`, and `accessToken`.
 

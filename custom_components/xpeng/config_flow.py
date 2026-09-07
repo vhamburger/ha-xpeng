@@ -22,6 +22,7 @@ from .const import (
     CONF_HOME_CHARGE_START_HOUR,
     CONF_MODE,
     CONF_OPEN_ID,
+    CONF_VEHICLE_MODEL,
     CONF_VEHICLE_NAME,
     DEFAULT_CLEANUP_FILES,
     DEFAULT_DATA_DIR,
@@ -34,6 +35,8 @@ from .const import (
     DOMAIN,
     MODE_API,
     MODE_LOCAL_DIR,
+    MODEL_AUTO,
+    XPENG_MODELS,
 )
 
 
@@ -46,6 +49,7 @@ class XpengConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize config flow."""
         self._mode: str = MODE_LOCAL_DIR
         self._vehicle_name: str = DEFAULT_VEHICLE_NAME
+        self._vehicle_model: str = MODEL_AUTO
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -56,6 +60,7 @@ class XpengConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self._mode = user_input[CONF_MODE]
             self._vehicle_name = user_input.get(CONF_VEHICLE_NAME, DEFAULT_VEHICLE_NAME)
+            self._vehicle_model = user_input.get(CONF_VEHICLE_MODEL, MODEL_AUTO)
 
             if self._mode == MODE_LOCAL_DIR:
                 return await self.async_step_local_dir()
@@ -64,6 +69,7 @@ class XpengConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {
                 vol.Required(CONF_VEHICLE_NAME, default=DEFAULT_VEHICLE_NAME): str,
+                vol.Optional(CONF_VEHICLE_MODEL, default=MODEL_AUTO): vol.In(XPENG_MODELS),
                 vol.Required(CONF_MODE, default=MODE_LOCAL_DIR): vol.In(
                     {
                         MODE_LOCAL_DIR: "Local Directory (CSV Drop)",
@@ -94,6 +100,7 @@ class XpengConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     title=f"XPENG {self._vehicle_name}",
                     data={
                         CONF_VEHICLE_NAME: self._vehicle_name,
+                        CONF_VEHICLE_MODEL: self._vehicle_model,
                         CONF_MODE: MODE_LOCAL_DIR,
                         CONF_DATA_DIR: data_dir,
                     },
@@ -124,6 +131,7 @@ class XpengConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 title=f"XPENG {self._vehicle_name} (API)",
                 data={
                     CONF_VEHICLE_NAME: self._vehicle_name,
+                    CONF_VEHICLE_MODEL: self._vehicle_model,
                     CONF_MODE: MODE_API,
                     CONF_APP_ID: user_input[CONF_APP_ID],
                     CONF_APP_SECRET: user_input[CONF_APP_SECRET],
@@ -169,8 +177,13 @@ class XpengOptionsFlowHandler(config_entries.OptionsFlow):
             return self.async_create_entry(title="", data=user_input)
 
         options = self.config_entry.options
+        current_model = options.get(
+            CONF_VEHICLE_MODEL,
+            self.config_entry.data.get(CONF_VEHICLE_MODEL, MODEL_AUTO),
+        )
         schema = vol.Schema(
             {
+                vol.Optional(CONF_VEHICLE_MODEL, default=current_model): vol.In(XPENG_MODELS),
                 vol.Optional(
                     CONF_CLEANUP_FILES,
                     default=options.get(CONF_CLEANUP_FILES, DEFAULT_CLEANUP_FILES),
