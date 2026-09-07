@@ -3,73 +3,74 @@
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue.svg)](https://home-assistant.io)
 
-Offizielle Community-Integration zur Einbindung von **XPENG-Elektrofahrzeugen** (z. B. **XPENG X9**, G9, G6, P7) in Home Assistant.
+Community integration to connect **XPENG Electric Vehicles** (e.g. **XPENG X9**, G9, G6, P7) to Home Assistant.
 
-Entwickelt für den täglichen Telemetrie- und Ladedaten-Abgleich mit deinem Smarthome und dem **Home Assistant Energy Dashboard**!
+Designed for daily telemetry tracking and charging data matching with your smart home and the **Home Assistant Energy Dashboard**!
 
 ---
 
 ## ✨ Features
 
-* **⚡ Energy Dashboard Zähler (`total_increasing` in `kWh`):**
-  * `sensor.<name>_energy_charged` erfasst die kumulierte Ladeenergie und kann direkt im HA Energy Dashboard unter *Individual Devices* ausgewählt werden.
-* **🏠 Intelligente Erkennung von Wallbox-Ladungen zu Hause:**
-  * `sensor.<name>_home_energy_charged` filtert Ladevorgänge an deiner privaten Wallbox anhand deines individuellen Nachtzeitfensters und Ladeleistungsbereichs (z. B. 8–12 kW).
-* **📊 Vollständige Fahrzeug-Telemetrie:**
-  * **Akkustand (SoC %):** `sensor.<name>_battery_level`
-  * **Restreichweite (km):** `sensor.<name>_range`
-  * **Kilometerstand (km):** `sensor.<name>_odometer` (`total_increasing` für Tages- und Monatserfassung)
-  * **Reifendrücke (bar):** 4 Einzelsensoren für alle Reifen (FL, FR, RL, RR)
-  * **Batterietemperatur (°C):** Maximal- und Minimaltemperatur des Akkupacks
-  * **Batteriespannung (V):** Hochvolt-BMS-Spannung (800V-Architektur)
-  * **Letzte Ladung (kWh):** Energiemenge des letzten Ladezyklus
-* **🔄 Dual-Import-Modus:**
-  1. **Lokaler Datei-Drop (sofort nutzbar):** Lege die heruntergeladenen CSVs oder das ZIP-Archiv in einem Ordner (z. B. `/config/xpeng/`) ab.
-  2. **XPENG Open Platform API:** Vollautomatischer täglicher Datenabruf über die offizielle EU Open Platform API (`/oauth2/queryData`).
-* **🧹 Automatische Speicher-Retention:**
-  * Verhindert das Zumüllen deiner Home Assistant Festplatte: Große CSV-Dumps werden nach erfolgreicher Verarbeitung automatisch gelöscht (einstellbar in den Optionen).
-* **🔘 Manueller Sync-Button:**
-  * Über `button.<name>_sync_data` kann der Datenimport jederzeit sofort per Knopfdruck oder Automation ausgelöst werden.
+* **⚡ Energy Dashboard Ready (`total_increasing` in `kWh`):**
+  * `sensor.<vehicle_name>_energy_charged` tracks cumulative charged energy and can be selected directly under *Energy Dashboard → Individual Devices*.
+* **🏠 Intelligent Home Wallbox Detection:**
+  * `sensor.<vehicle_name>_home_energy_charged` classifies charging sessions at your private wallbox using configurable night-time hours and power thresholds (e.g. 8–12 kW for 11 kW AC wallboxes).
+* **📊 Comprehensive Vehicle Telemetry:**
+  * **Battery State of Charge (SoC %):** `sensor.<vehicle_name>_battery_level`
+  * **Remaining Range (km):** `sensor.<vehicle_name>_range`
+  * **Odometer (km):** `sensor.<vehicle_name>_odometer` (`total_increasing` for daily and monthly mileage tracking)
+  * **Tire Pressures (bar):** Individual sensors for all 4 wheels (Front Left, Front Right, Rear Left, Rear Right)
+  * **Battery Temperature (°C):** Maximum and minimum temperature of the high-voltage pack
+  * **Battery Voltage (V):** High-voltage BMS pack voltage (800V architecture)
+  * **Last Charge Energy (kWh):** Energy added during the most recent charging session
+* **🔄 Dual-Import Mode:**
+  1. **Local File Drop (ready to use):** Simply place downloaded GDPR CSV export files or ZIP archives into a configured directory (e.g. `/config/xpeng/`).
+  2. **XPENG Open Platform API:** Automated daily data fetch via the official EU Open Platform API (`/oauth2/queryData`).
+* **🧹 Automatic Storage Retention:**
+  * High-frequency CAN-bus CSV files can be large (50–60 MB). Once processed and accounted for in the cumulative meters, raw files are automatically removed to protect your Home Assistant storage (can be toggled in options).
+* **🔘 Manual Sync Button:**
+  * `button.<vehicle_name>_sync_data` lets you trigger an immediate scan/refresh from your dashboard or automations.
 
 ---
 
 ## 📦 Installation via HACS
 
-1. Öffne **HACS** in deinem Home Assistant.
-2. Klicke oben rechts auf das Drei-Punkte-Menü $\rightarrow$ **Benutzerdefinierte Repositories**.
-3. Füge die URL dieses Repositories ein und wähle die Kategorie **Integration**.
-4. Klicke auf **Herunterladen**.
-5. Starte Home Assistant neu.
+1. Open **HACS** in your Home Assistant.
+2. Click the **three dots** in the top right corner $\rightarrow$ **Custom repositories**.
+3. Enter the repository URL: `https://github.com/<your-username>/ha-xpeng`
+4. Category: **Integration**.
+5. Click **Add**.
+6. Search for **XPENG Vehicles**, click **Download**, and restart Home Assistant.
 
 ---
 
-## ⚙️ Konfiguration
+## ⚙️ Configuration
 
-1. Gehe in Home Assistant auf **Einstellungen** $\rightarrow$ **Geräte & Dienste** $\rightarrow$ **Integration hinzufügen**.
-2. Suche nach **XPENG Vehicles**.
-3. Wähle den Fahrzeugnamen (z. B. `Lexi`) und deinen bevorzugten Modus:
-   * **Lokaler Ordner:** Gib den Pfad an, in dem du CSVs/ZIPs ablegst (Standard: `/config/xpeng`).
-   * **XPENG Open Platform API:** Gib deine `appId`, `appSecret`, `openId` und `accessToken` ein.
+1. In Home Assistant, navigate to **Settings** $\rightarrow$ **Devices & Services** $\rightarrow$ **Add Integration**.
+2. Search for **XPENG Vehicles**.
+3. Choose your vehicle name (e.g. `My XPENG`, `X9`) and your preferred import mode:
+   * **Local Directory:** Enter the path where you drop CSVs/ZIPs (default: `/config/xpeng`).
+   * **XPENG Open Platform API:** Enter your `appId`, `appSecret`, `openId`, and `accessToken`.
 
-### Optionen anpassen:
-Über **Konfigurieren** an der Integration kannst du jederzeit folgende Parameter anpassen:
-* *Dateien nach Import automatisch löschen (Speicherschutz)*
-* *Wallbox-Erkennung aktivieren / deaktivieren*
-* *Leistungsbereich für Wallbox (Standard: 8,0 bis 12,0 kW)*
-* *Nachtladefenster Start & Ende (Standard: 20:00 Uhr bis 07:00 Uhr)*
-
----
-
-## ⚡ Energy Dashboard einrichten
-
-1. Öffne **Einstellungen** $\rightarrow$ **Dashboards** $\rightarrow$ **Energie**.
-2. Scrolle zu **Einzelne Geräte** (Individual Devices).
-3. Klicke auf **Gerät hinzufügen** und wähle deinen Sensor:
-   * `sensor.lexi_energy_charged` (Gesamte Ladeenergie) oder
-   * `sensor.lexi_home_energy_charged` (nur Zuhause geladene Energie).
-4. Home Assistant berechnet nun automatisch den täglichen Ladeenergieverbrauch deines XPENG!
+### Options & Customization:
+Click **Configure** on the integration card at any time to adjust:
+* *Delete processed files after import (save storage)*: enabled by default
+* *Enable home wallbox detection*: enabled by default
+* *Wallbox power range (kW)*: default `8.0` to `12.0` kW
+* *Night charging window*: default `20:00` to `07:00`
 
 ---
 
-## 📄 Lizenz
+## ⚡ Setup with Home Assistant Energy Dashboard
+
+1. Navigate to **Settings** $\rightarrow$ **Dashboards** $\rightarrow$ **Energy**.
+2. Scroll to **Individual Devices**.
+3. Click **Add Device** and select:
+   * `sensor.<vehicle_name>_energy_charged` (Total energy charged across all sessions) or
+   * `sensor.<vehicle_name>_home_energy_charged` (Home wallbox charging only).
+4. Home Assistant will automatically calculate and display your vehicle's charging energy consumption!
+
+---
+
+## 📄 License
 MIT License

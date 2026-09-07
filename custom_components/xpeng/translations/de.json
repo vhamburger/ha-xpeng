@@ -5,7 +5,7 @@
         "title": "XPENG Fahrzeug hinzufügen",
         "description": "Wähle den Fahrzeugnamen und die bevorzugte Importmethode.",
         "data": {
-          "vehicle_name": "Fahrzeugname (z.B. Lexi)",
+          "vehicle_name": "Fahrzeugname (z.B. Mein XPENG)",
           "mode": "Import-Modus"
         }
       },
