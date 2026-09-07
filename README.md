@@ -61,7 +61,7 @@ You can obtain vehicle data in two ways:
 
 1. Open **HACS** in your Home Assistant.
 2. Click the **three dots** in the top right corner $\rightarrow$ **Custom repositories**.
-3. Enter the repository URL: `https://github.com/<your-username>/ha-xpeng`
+3. Enter the repository URL: `https://github.com/vhamburger/ha-xpeng`
 4. Category: **Integration**.
 5. Click **Add**.
 6. Search for **XPENG Vehicles**, click **Download**, and restart Home Assistant.
