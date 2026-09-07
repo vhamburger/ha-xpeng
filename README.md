@@ -33,6 +33,30 @@ Designed for daily telemetry tracking and charging data matching with your smart
 
 ---
 
+## 🇪🇺 EU Region & How to Access Your XPENG Data
+
+> [!NOTE]
+> This integration is based on the data export mechanisms provided under European Union regulations (**GDPR** and the **EU Data Act**). As a result, this data access is currently tailored to **European XPENG vehicles and EU accounts**.
+
+You can obtain vehicle data in two ways:
+
+### 1. Manual File Download (GDPR Data Export)
+* Log in with your XPENG owner account on the official European XPENG website / owner portal.
+* Request your vehicle data download (GDPR data export).
+* XPENG prepares a ZIP archive containing the 3 high-resolution telemetry CSV files (`driving_power_energy`, `driving_operation`, `driving_status`).
+* Place the ZIP or extracted CSV files into your configured Home Assistant directory (default: `/config/xpeng/`). The integration will automatically parse the data and update your sensors!
+
+### 2. Automated API Access (XPENG Open Platform)
+* For automatic daily fetching directly from XPENG's servers, you can apply for API access via the official Open Platform.
+* Refer to the official [XPENG Open Platform API Integration Guide](https://static-eu.xiaopeng.com/xp-ucenter/api-integration-guide-en-0.0.1.html).
+* To request API credentials (`appId` and `appSecret`), send an email to **`glo.open@xpeng.com`** with:
+  * Your integrating entity/user name
+  * Application name (e.g. `Home Assistant`)
+  * Contact email address
+* Once approved and authenticated, you will receive `openId` and `accessToken` to enter into the integration's setup dialog.
+
+---
+
 ## 📦 Installation via HACS
 
 1. Open **HACS** in your Home Assistant.
