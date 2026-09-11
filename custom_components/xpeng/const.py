@@ -19,6 +19,7 @@ CONF_HOME_CHARGE_MIN_POWER = "home_charge_min_power"
 CONF_HOME_CHARGE_MAX_POWER = "home_charge_max_power"
 CONF_HOME_CHARGE_START_HOUR = "home_charge_start_hour"
 CONF_HOME_CHARGE_END_HOUR = "home_charge_end_hour"
+CONF_HOME_TRACKER_ENTITY = "home_tracker_entity"
 CONF_RESET_ENERGY = "reset_energy"
 
 # Modes
@@ -58,6 +59,7 @@ DEFAULT_HOME_CHARGE_MIN_POWER = 8.0
 DEFAULT_HOME_CHARGE_MAX_POWER = 12.0
 DEFAULT_HOME_CHARGE_START_HOUR = 20
 DEFAULT_HOME_CHARGE_END_HOUR = 7
+DEFAULT_HOME_TRACKER_ENTITY = ""
 
 # Platforms
 PLATFORMS = ["sensor", "button"]

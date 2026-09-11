@@ -42,6 +42,7 @@
           "reset_energy": "Kumulierte Zähler zurücksetzen (Energie & Fahrzeit bei Duplikaten neu berechnen)",
           "cleanup_processed_files": "Dateien nach erfolgreichem Import löschen (Speicher sparen)",
           "home_charge_enabled": "Heimladungen an der Wallbox automatisch erkennen",
+          "home_tracker_entity": "Fahrzeug-Präsenz-Entität (z. B. UniFi WLAN-Tracker / Sensor)",
           "home_charge_min_power": "Minimale Ladeleistung für Wallbox (kW)",
           "home_charge_max_power": "Maximale Ladeleistung für Wallbox (kW)",
           "home_charge_start_hour": "Nachtladefenster Start (Stunde 0-23)",

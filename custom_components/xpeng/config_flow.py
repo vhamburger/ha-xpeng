@@ -8,6 +8,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 
 from .const import (
     CONF_ACCESS_TOKEN,
@@ -20,6 +21,7 @@ from .const import (
     CONF_HOME_CHARGE_MAX_POWER,
     CONF_HOME_CHARGE_MIN_POWER,
     CONF_HOME_CHARGE_START_HOUR,
+    CONF_HOME_TRACKER_ENTITY,
     CONF_MODE,
     CONF_OPEN_ID,
     CONF_RESET_ENERGY,
@@ -190,6 +192,12 @@ class XpengOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_HOME_CHARGE_ENABLED,
                     default=options.get(CONF_HOME_CHARGE_ENABLED, DEFAULT_HOME_CHARGE_ENABLED),
                 ): bool,
+                vol.Optional(
+                    CONF_HOME_TRACKER_ENTITY,
+                    description={"suggested_value": options.get(CONF_HOME_TRACKER_ENTITY)},
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(domain=["device_tracker", "binary_sensor", "input_boolean"])
+                ),
                 vol.Optional(
                     CONF_HOME_CHARGE_MIN_POWER,
                     default=options.get(CONF_HOME_CHARGE_MIN_POWER, DEFAULT_HOME_CHARGE_MIN_POWER),

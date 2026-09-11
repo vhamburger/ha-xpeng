@@ -23,6 +23,7 @@ class ChargingSession:
     avg_power_kw: float
     max_power_kw: float
     is_home_charge: bool = False
+    prev_trip_end_ts: int | None = None
 
     @property
     def start_datetime(self) -> datetime:
@@ -183,6 +184,14 @@ class XpengCsvParser:
         data.driving_seconds = sum(t.duration_seconds for t in data.driving_trips)
         data.driving_rolling_seconds = sum(t.rolling_seconds for t in data.driving_trips)
         data.total_driving_hours = round(data.driving_seconds / 3600.0, 2)
+
+        # Correlate charging sessions with preceding driving trips to mark arrival time
+        for session in data.charging_sessions:
+            prev_trips = [t for t in data.driving_trips if t.end_timestamp <= session.start_timestamp]
+            if prev_trips:
+                session.prev_trip_end_ts = max(t.end_timestamp for t in prev_trips)
+            else:
+                session.prev_trip_end_ts = max(0, session.start_timestamp - 14400)
 
         return data, list(set(processed_files))
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -11,6 +11,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+try:
+    from homeassistant.components.recorder import history
+except ImportError:
+    history = None
 
 from .api import XpengApiClient, XpengApiError
 from .const import (
@@ -24,6 +29,7 @@ from .const import (
     CONF_HOME_CHARGE_MAX_POWER,
     CONF_HOME_CHARGE_MIN_POWER,
     CONF_HOME_CHARGE_START_HOUR,
+    CONF_HOME_TRACKER_ENTITY,
     CONF_MODE,
     CONF_OPEN_ID,
     CONF_RESET_ENERGY,
@@ -36,6 +42,7 @@ from .const import (
     DEFAULT_HOME_CHARGE_MAX_POWER,
     DEFAULT_HOME_CHARGE_MIN_POWER,
     DEFAULT_HOME_CHARGE_START_HOUR,
+    DEFAULT_HOME_TRACKER_ENTITY,
     DEFAULT_VEHICLE_NAME,
     DOMAIN,
     MODE_API,
@@ -113,6 +120,11 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
     def home_charge_end_hour(self) -> int:
         """Return ending hour for night home charge window."""
         return int(self.entry.options.get(CONF_HOME_CHARGE_END_HOUR, DEFAULT_HOME_CHARGE_END_HOUR))
+
+    @property
+    def home_tracker_entity(self) -> str:
+        """Return optional home presence / WiFi tracker entity."""
+        return str(self.entry.options.get(CONF_HOME_TRACKER_ENTITY, DEFAULT_HOME_TRACKER_ENTITY) or "").strip()
 
     @property
     def cleanup_files(self) -> bool:
@@ -217,7 +229,28 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
             new_options[CONF_RESET_ENERGY] = False
             self.hass.config_entries.async_update_entry(self.entry, options=new_options)
 
-        # 3. Energy Session Deduplication
+        # 3. Energy Session Deduplication & Classification
+        tracker_entity = self.home_tracker_entity
+        if tracker_entity and parsed_data.charging_sessions:
+            for session in parsed_data.charging_sessions:
+                window_start = session.prev_trip_end_ts if session.prev_trip_end_ts else max(0, session.start_timestamp - 14400)
+                window_end = session.end_timestamp
+                is_home_tracker = await self.hass.async_add_executor_job(
+                    self._check_tracker_home_in_window,
+                    tracker_entity,
+                    window_start,
+                    window_end,
+                )
+                if is_home_tracker is not None:
+                    _LOGGER.info(
+                        "Charging session %s_%s classified via tracker %s: home=%s",
+                        session.start_timestamp,
+                        session.end_timestamp,
+                        tracker_entity,
+                        is_home_tracker,
+                    )
+                    session.is_home_charge = is_home_tracker
+
         processed_session_ids = set(self._stored_cumulative.get("processed_session_ids", []))
         total_energy = float(self._stored_cumulative.get("cumulative_total_energy_kwh", 0.0))
         home_energy = float(self._stored_cumulative.get("cumulative_home_energy_kwh", 0.0))
@@ -343,3 +376,35 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
                         os.rmdir(d_path)
                 except Exception:
                     pass
+
+    def _check_tracker_home_in_window(
+        self, entity_id: str, start_ts: int, end_ts: int
+    ) -> bool | None:
+        """Check if tracker entity was in 'home' / 'on' state between start_ts and end_ts.
+
+        Returns True if home, False if definitely not home, or None if no history found.
+        """
+        if not history:
+            return None
+        try:
+            start_dt = datetime.fromtimestamp(start_ts, tz=timezone.utc)
+            end_dt = datetime.fromtimestamp(end_ts, tz=timezone.utc)
+            significant_states = history.get_significant_states(
+                self.hass,
+                start_time=start_dt,
+                end_time=end_dt,
+                entity_ids=[entity_id],
+                significant_changes_only=False,
+            )
+            states = significant_states.get(entity_id, [])
+            if not states:
+                # No history recorded in this window (e.g. purged or entity didn't exist)
+                return None
+
+            for s in states:
+                if s.state and s.state.lower() in ("home", "on", "connected", "true"):
+                    return True
+            return False
+        except Exception as err:
+            _LOGGER.debug("Error querying recorder history for %s: %s", entity_id, err)
+            return None
