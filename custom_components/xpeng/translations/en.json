@@ -62,6 +62,9 @@
       "last_charge_energy": {
         "name": "Last Charge Energy"
       },
+      "last_charge_power": {
+        "name": "Last Charge Power"
+      },
       "battery_level": {
         "name": "Battery Level"
       },

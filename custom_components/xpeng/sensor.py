@@ -18,6 +18,7 @@ from homeassistant.const import (
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfLength,
+    UnitOfPower,
     UnitOfPressure,
     UnitOfTemperature,
     UnitOfTime,
@@ -66,6 +67,15 @@ SENSOR_DESCRIPTIONS: tuple[XpengSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         suggested_display_precision=2,
         value_fn=lambda d: d.last_charge_kwh,
+    ),
+    XpengSensorDescription(
+        key="last_charge_power",
+        translation_key="last_charge_power",
+        device_class=SensorDeviceClass.POWER,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=UnitOfPower.KILO_WATT,
+        suggested_display_precision=1,
+        value_fn=lambda d: d.last_charge_power_kw,
     ),
     # Battery & Range
     XpengSensorDescription(
@@ -232,6 +242,13 @@ class XpengSensorEntity(CoordinatorEntity[XpengDataUpdateCoordinator], SensorEnt
                 "rolling_time_hours": rolling_hours,
                 "stopped_time_hours": stopped_hours,
                 "trips_count": len(trip_ids) if trip_ids else len(data.driving_trips),
+            }
+        if self.entity_description.key in ("last_charge_power", "last_charge_energy") and self.coordinator.data:
+            data = self.coordinator.data
+            return {
+                "average_power_kw": data.last_charge_power_kw,
+                "max_power_kw": data.last_charge_max_power_kw,
+                "energy_kwh": data.last_charge_kwh,
             }
         return None
 

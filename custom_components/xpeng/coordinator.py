@@ -208,6 +208,8 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
             restored.tire_pressure_rl = self._stored_cumulative.get("tire_pressure_rl")
             restored.tire_pressure_rr = self._stored_cumulative.get("tire_pressure_rr")
             restored.last_charge_kwh = float(self._stored_cumulative.get("last_charge_kwh", 0.0))
+            restored.last_charge_power_kw = float(self._stored_cumulative.get("last_charge_power_kw", 0.0))
+            restored.last_charge_max_power_kw = float(self._stored_cumulative.get("last_charge_max_power_kw", 0.0))
             restored.last_charge_timestamp = self._stored_cumulative.get("last_charge_timestamp")
             restored.vin = self._stored_cumulative.get("vin")
             restored.vmodel = self._stored_cumulative.get("vmodel")
@@ -325,6 +327,8 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
             })
             if parsed_data.last_charge_timestamp:
                 self._stored_cumulative["last_charge_kwh"] = parsed_data.last_charge_kwh
+                self._stored_cumulative["last_charge_power_kw"] = parsed_data.last_charge_power_kw
+                self._stored_cumulative["last_charge_max_power_kw"] = parsed_data.last_charge_max_power_kw
                 self._stored_cumulative["last_charge_timestamp"] = parsed_data.last_charge_timestamp
         else:
             _LOGGER.info(
@@ -346,6 +350,8 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
             parsed_data.vin = self._stored_cumulative.get("vin")
             parsed_data.vmodel = self._stored_cumulative.get("vmodel")
             parsed_data.last_charge_kwh = float(self._stored_cumulative.get("last_charge_kwh", 0.0))
+            parsed_data.last_charge_power_kw = float(self._stored_cumulative.get("last_charge_power_kw", 0.0))
+            parsed_data.last_charge_max_power_kw = float(self._stored_cumulative.get("last_charge_max_power_kw", 0.0))
             parsed_data.last_charge_timestamp = self._stored_cumulative.get("last_charge_timestamp")
 
         await self._store.async_save(self._stored_cumulative)

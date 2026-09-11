@@ -82,6 +82,8 @@ class XpengParsedData:
     total_energy_charged_kwh: float = 0.0
     home_energy_charged_kwh: float = 0.0
     last_charge_kwh: float = 0.0
+    last_charge_power_kw: float = 0.0
+    last_charge_max_power_kw: float = 0.0
     last_charge_timestamp: int | None = None
 
     charging_sessions: list[ChargingSession] = field(default_factory=list)
@@ -381,6 +383,8 @@ class XpengCsvParser:
         )
         data.charging_sessions.append(session)
         data.last_charge_kwh = energy_kwh
+        data.last_charge_power_kw = avg_power
+        data.last_charge_max_power_kw = round(max_power, 2)
         data.last_charge_timestamp = end_ts
 
     def _parse_operation(self, file_path: str, data: XpengParsedData) -> None:
