@@ -75,6 +75,10 @@ class XpengParsedData:
 
     charging_sessions: list[ChargingSession] = field(default_factory=list)
 
+    # Driving
+    driving_seconds: int = 0
+    total_driving_hours: float = 0.0
+
 
 class XpengCsvParser:
     """Parser for XPENG GDPR / Open Platform CSV exports."""
@@ -164,6 +168,8 @@ class XpengCsvParser:
                 self._parse_status(s_file, data)
                 processed_files.append(s_file)
 
+        data.total_driving_hours = round(data.driving_seconds / 3600.0, 2)
+
         return data, list(set(processed_files))
 
     def _parse_power_energy(self, file_path: str, data: XpengParsedData) -> None:
@@ -174,6 +180,7 @@ class XpengCsvParser:
         active_session_max_power = 0.0
         active_session_start_ts = 0
         last_charge_ts = 0
+        latest_energy_ts = 0
 
         with open(file_path, mode="r", encoding="utf-8-sig", errors="replace") as f:
             reader = csv.DictReader(f)
@@ -194,49 +201,51 @@ class XpengCsvParser:
                 if data.last_timestamp is None or ts > data.last_timestamp:
                     data.last_timestamp = ts
 
-                # Battery SoC
-                soc_str = row.get("ldcu_bms_soc_disp")
-                if soc_str:
-                    try:
-                        data.battery_level = float(soc_str)
-                    except ValueError:
-                        pass
+                if ts >= latest_energy_ts:
+                    latest_energy_ts = ts
+                    # Battery SoC
+                    soc_str = row.get("ldcu_bms_soc_disp")
+                    if soc_str:
+                        try:
+                            data.battery_level = float(soc_str)
+                        except ValueError:
+                            pass
 
-                # Range
-                range_str = row.get("ldcu_dstbatdisp_dynamic")
-                if range_str:
-                    try:
-                        data.range_km = float(range_str)
-                    except ValueError:
-                        pass
+                    # Range
+                    range_str = row.get("ldcu_dstbatdisp_dynamic")
+                    if range_str:
+                        try:
+                            data.range_km = float(range_str)
+                        except ValueError:
+                            pass
 
-                # Battery Voltage & Current
-                volt_str = row.get("bms_battvolt")
-                curr_str = row.get("bms_battcurr")
-                if volt_str:
-                    try:
-                        data.battery_voltage = float(volt_str)
-                    except ValueError:
-                        pass
-                if curr_str:
-                    try:
-                        data.battery_current = float(curr_str)
-                    except ValueError:
-                        pass
+                    # Battery Voltage & Current
+                    volt_str = row.get("bms_battvolt")
+                    curr_str = row.get("bms_battcurr")
+                    if volt_str:
+                        try:
+                            data.battery_voltage = float(volt_str)
+                        except ValueError:
+                            pass
+                    if curr_str:
+                        try:
+                            data.battery_current = float(curr_str)
+                        except ValueError:
+                            pass
 
-                # Battery Temperatures
-                tmax_str = row.get("bms_batttempmax_gb")
-                tmin_str = row.get("bms_batttempmin_gb")
-                if tmax_str:
-                    try:
-                        data.battery_temp_max = float(tmax_str)
-                    except ValueError:
-                        pass
-                if tmin_str:
-                    try:
-                        data.battery_temp_min = float(tmin_str)
-                    except ValueError:
-                        pass
+                    # Battery Temperatures
+                    tmax_str = row.get("bms_batttempmax_gb")
+                    tmin_str = row.get("bms_batttempmin_gb")
+                    if tmax_str:
+                        try:
+                            data.battery_temp_max = float(tmax_str)
+                        except ValueError:
+                            pass
+                    if tmin_str:
+                        try:
+                            data.battery_temp_min = float(tmin_str)
+                        except ValueError:
+                            pass
 
                 # Charging power integration
                 chrg_str = row.get("ldcu_chrgpwr")
@@ -352,57 +361,92 @@ class XpengCsvParser:
         data.last_charge_timestamp = end_ts
 
     def _parse_operation(self, file_path: str, data: XpengParsedData) -> None:
-        """Parse driving_operation CSV file (odometer, speed)."""
+        """Parse driving_operation CSV file (odometer, speed, driving time)."""
         _LOGGER.debug("Parsing operation file: %s", file_path)
         with open(file_path, mode="r", encoding="utf-8-sig", errors="replace") as f:
             reader = csv.DictReader(f)
             for row in reader:
+                ts_str = row.get("timer")
+                if ts_str:
+                    try:
+                        ts = int(ts_str)
+                        if data.last_timestamp is None or ts > data.last_timestamp:
+                            data.last_timestamp = ts
+                    except ValueError:
+                        pass
+
+                # Track active driving time: 1 row per second when speed > 0.5 km/h
+                spd_str = row.get("esp_vehspd")
+                if spd_str:
+                    try:
+                        if float(spd_str) > 0.5:
+                            data.driving_seconds += 1
+                    except ValueError:
+                        pass
+
+                # Monotonic odometer
                 odo_str = row.get("cdcu_totalodometer")
                 if odo_str:
                     try:
-                        data.odometer = float(odo_str)
+                        odo = float(odo_str)
+                        if data.odometer is None or odo > data.odometer:
+                            data.odometer = odo
                     except ValueError:
                         pass
 
     def _parse_status(self, file_path: str, data: XpengParsedData) -> None:
         """Parse driving_status CSV file (tire pressures, doors)."""
         _LOGGER.debug("Parsing status file: %s", file_path)
+        latest_status_ts = 0
         with open(file_path, mode="r", encoding="utf-8-sig", errors="replace") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # Tire pressures (kPa -> bar)
-                for key, attr in (
-                    ("ldcu_tpmsprfl", "tire_pressure_fl"),
-                    ("ldcu_tpmsprfr", "tire_pressure_fr"),
-                    ("ldcu_tpmsprrl", "tire_pressure_rl"),
-                    ("ldcu_tpmsprrr", "tire_pressure_rr"),
-                ):
-                    val_str = row.get(key)
-                    if val_str:
-                        try:
-                            # 1 kPa = 0.01 bar
-                            setattr(data, attr, round(float(val_str) / 100.0, 2))
-                        except ValueError:
-                            pass
-
-                # Doors
-                for key, attr in (
-                    ("ldcu_driverdoorajarst", "door_driver_open"),
-                    ("rdcu_psngrdoorajarst", "door_passenger_open"),
-                    ("ldcu_rldoorajarst", "door_rear_left_open"),
-                    ("rdcu_rrdoorajarst", "door_rear_right_open"),
-                ):
-                    val_str = row.get(key)
-                    if val_str:
-                        try:
-                            setattr(data, attr, float(val_str) > 0)
-                        except ValueError:
-                            pass
-
-                # Trunk
-                tr_str = row.get("rdm_tropenersts")
-                if tr_str:
+                ts_str = row.get("timer")
+                if ts_str:
                     try:
-                        data.trunk_open = float(tr_str) > 0
+                        ts = int(ts_str)
+                        if data.last_timestamp is None or ts > data.last_timestamp:
+                            data.last_timestamp = ts
                     except ValueError:
-                        pass
+                        ts = 0
+                else:
+                    ts = 0
+
+                if ts >= latest_status_ts:
+                    latest_status_ts = ts
+                    # Tire pressures (kPa -> bar)
+                    for key, attr in (
+                        ("ldcu_tpmsprfl", "tire_pressure_fl"),
+                        ("ldcu_tpmsprfr", "tire_pressure_fr"),
+                        ("ldcu_tpmsprrl", "tire_pressure_rl"),
+                        ("ldcu_tpmsprrr", "tire_pressure_rr"),
+                    ):
+                        val_str = row.get(key)
+                        if val_str:
+                            try:
+                                # 1 kPa = 0.01 bar
+                                setattr(data, attr, round(float(val_str) / 100.0, 2))
+                            except ValueError:
+                                pass
+
+                    # Doors
+                    for key, attr in (
+                        ("ldcu_driverdoorajarst", "door_driver_open"),
+                        ("rdcu_psngrdoorajarst", "door_passenger_open"),
+                        ("ldcu_rldoorajarst", "door_rear_left_open"),
+                        ("rdcu_rrdoorajarst", "door_rear_right_open"),
+                    ):
+                        val_str = row.get(key)
+                        if val_str:
+                            try:
+                                setattr(data, attr, float(val_str) > 0)
+                            except ValueError:
+                                pass
+
+                    # Trunk
+                    tr_str = row.get("rdm_tropenersts")
+                    if tr_str:
+                        try:
+                            data.trunk_open = float(tr_str) > 0
+                        except ValueError:
+                            pass

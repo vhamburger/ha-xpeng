@@ -19,6 +19,7 @@ CONF_HOME_CHARGE_MIN_POWER = "home_charge_min_power"
 CONF_HOME_CHARGE_MAX_POWER = "home_charge_max_power"
 CONF_HOME_CHARGE_START_HOUR = "home_charge_start_hour"
 CONF_HOME_CHARGE_END_HOUR = "home_charge_end_hour"
+CONF_RESET_ENERGY = "reset_energy"
 
 # Modes
 MODE_LOCAL_DIR = "local_dir"

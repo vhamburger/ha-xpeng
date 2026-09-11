@@ -22,6 +22,7 @@ from .const import (
     CONF_HOME_CHARGE_START_HOUR,
     CONF_MODE,
     CONF_OPEN_ID,
+    CONF_RESET_ENERGY,
     CONF_VEHICLE_MODEL,
     CONF_VEHICLE_NAME,
     DEFAULT_CLEANUP_FILES,
@@ -180,6 +181,7 @@ class XpengOptionsFlowHandler(config_entries.OptionsFlow):
         schema = vol.Schema(
             {
                 vol.Optional(CONF_VEHICLE_MODEL, default=current_model): vol.In(XPENG_MODELS),
+                vol.Optional(CONF_RESET_ENERGY, default=False): bool,
                 vol.Optional(
                     CONF_CLEANUP_FILES,
                     default=options.get(CONF_CLEANUP_FILES, DEFAULT_CLEANUP_FILES),

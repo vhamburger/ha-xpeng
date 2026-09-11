@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -19,6 +20,7 @@ from homeassistant.const import (
     UnitOfLength,
     UnitOfPressure,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -152,6 +154,22 @@ SENSOR_DESCRIPTIONS: tuple[XpengSensorDescription, ...] = (
         suggested_display_precision=2,
         value_fn=lambda d: d.tire_pressure_rr,
     ),
+    # Data Freshness & Driving Time
+    XpengSensorDescription(
+        key="last_data_update",
+        translation_key="last_data_update",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda d: datetime.fromtimestamp(d.last_timestamp, tz=timezone.utc) if d.last_timestamp else None,
+    ),
+    XpengSensorDescription(
+        key="total_driving_time",
+        translation_key="total_driving_time",
+        device_class=SensorDeviceClass.DURATION,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        suggested_display_precision=2,
+        value_fn=lambda d: d.total_driving_hours,
+    ),
 )
 
 
@@ -191,6 +209,21 @@ class XpengSensorEntity(CoordinatorEntity[XpengDataUpdateCoordinator], SensorEnt
         if self.coordinator.data is None:
             return None
         return self.entity_description.value_fn(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return entity specific state attributes."""
+        if self.entity_description.key == "last_data_update" and self.coordinator.data:
+            data = self.coordinator.data
+            age_hours: float | None = None
+            if data.last_timestamp:
+                age_hours = round((datetime.now(timezone.utc).timestamp() - data.last_timestamp) / 3600.0, 1)
+            return {
+                "data_age_hours": age_hours,
+                "data_source": self.coordinator.mode,
+                "raw_timestamp": data.last_timestamp,
+            }
+        return None
 
     @property
     def device_info(self) -> DeviceInfo:

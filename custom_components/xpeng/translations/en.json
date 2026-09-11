@@ -39,6 +39,7 @@
         "title": "Configure XPENG Settings",
         "data": {
           "vehicle_model": "Vehicle Model",
+          "reset_energy": "Reset cumulative energy counter (fix double counts / re-sync)",
           "cleanup_processed_files": "Delete files after successful import (save storage)",
           "home_charge_enabled": "Automatically classify home wallbox charging",
           "home_charge_min_power": "Minimum home charging power (kW)",
@@ -89,6 +90,12 @@
       },
       "tire_pressure_rear_right": {
         "name": "Tire Pressure Rear Right"
+      },
+      "last_data_update": {
+        "name": "Last Data Update"
+      },
+      "total_driving_time": {
+        "name": "Total Driving Time"
       }
     },
     "button": {

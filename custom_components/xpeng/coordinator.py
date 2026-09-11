@@ -26,6 +26,7 @@ from .const import (
     CONF_HOME_CHARGE_START_HOUR,
     CONF_MODE,
     CONF_OPEN_ID,
+    CONF_RESET_ENERGY,
     CONF_VEHICLE_MODEL,
     CONF_VEHICLE_NAME,
     DEFAULT_CLEANUP_FILES,
@@ -178,11 +179,12 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
                 return self.data
             # Restore previous state from storage if available
             restored = XpengParsedData()
-            restored.total_energy_charged_kwh = self._stored_cumulative.get("cumulative_total_energy_kwh", 0.0)
-            restored.home_energy_charged_kwh = self._stored_cumulative.get("cumulative_home_energy_kwh", 0.0)
+            restored.total_energy_charged_kwh = float(self._stored_cumulative.get("cumulative_total_energy_kwh", 0.0))
+            restored.home_energy_charged_kwh = float(self._stored_cumulative.get("cumulative_home_energy_kwh", 0.0))
+            restored.total_driving_hours = float(self._stored_cumulative.get("cumulative_driving_hours", 0.0))
+            restored.odometer = self._stored_cumulative.get("odometer")
             restored.battery_level = self._stored_cumulative.get("battery_level")
             restored.range_km = self._stored_cumulative.get("range_km")
-            restored.odometer = self._stored_cumulative.get("odometer")
             restored.battery_voltage = self._stored_cumulative.get("battery_voltage")
             restored.battery_current = self._stored_cumulative.get("battery_current")
             restored.battery_temp_max = self._stored_cumulative.get("battery_temp_max")
@@ -191,44 +193,103 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
             restored.tire_pressure_fr = self._stored_cumulative.get("tire_pressure_fr")
             restored.tire_pressure_rl = self._stored_cumulative.get("tire_pressure_rl")
             restored.tire_pressure_rr = self._stored_cumulative.get("tire_pressure_rr")
-            restored.last_charge_kwh = self._stored_cumulative.get("last_charge_kwh")
+            restored.last_charge_kwh = float(self._stored_cumulative.get("last_charge_kwh", 0.0))
             restored.last_charge_timestamp = self._stored_cumulative.get("last_charge_timestamp")
             restored.vin = self._stored_cumulative.get("vin")
             restored.vmodel = self._stored_cumulative.get("vmodel")
             restored.last_timestamp = self._stored_cumulative.get("last_timestamp")
             return restored
 
-        # 3. Accumulate Energy & Update Persistent Telemetry
-        prev_total = self._stored_cumulative.get("cumulative_total_energy_kwh", 0.0)
-        prev_home = self._stored_cumulative.get("cumulative_home_energy_kwh", 0.0)
+        # Check if reset energy was requested in options
+        if self.entry.options.get(CONF_RESET_ENERGY, False):
+            _LOGGER.info("Resetting cumulative energy meter as requested in options")
+            self._stored_cumulative["cumulative_total_energy_kwh"] = 0.0
+            self._stored_cumulative["cumulative_home_energy_kwh"] = 0.0
+            self._stored_cumulative["processed_session_ids"] = []
 
-        # The parsed file contains energy charged during the batch period
-        new_total = round(prev_total + parsed_data.total_energy_charged_kwh, 3)
-        new_home = round(prev_home + parsed_data.home_energy_charged_kwh, 3)
+        # 3. Energy Session Deduplication
+        processed_session_ids = set(self._stored_cumulative.get("processed_session_ids", []))
+        total_energy = float(self._stored_cumulative.get("cumulative_total_energy_kwh", 0.0))
+        home_energy = float(self._stored_cumulative.get("cumulative_home_energy_kwh", 0.0))
 
-        parsed_data.total_energy_charged_kwh = new_total
-        parsed_data.home_energy_charged_kwh = new_home
+        for session in parsed_data.charging_sessions:
+            s_id = f"{session.start_timestamp}_{session.end_timestamp}"
+            if s_id in processed_session_ids:
+                _LOGGER.debug("Skipping duplicate charging session: %s", s_id)
+                continue
+            processed_session_ids.add(s_id)
+            total_energy += session.energy_kwh
+            if session.is_home_charge:
+                home_energy += session.energy_kwh
+            _LOGGER.info("Counted new charging session %s (+%.2f kWh, home=%s)", s_id, session.energy_kwh, session.is_home_charge)
 
-        self._stored_cumulative.update({
-            "cumulative_total_energy_kwh": new_total,
-            "cumulative_home_energy_kwh": new_home,
-            "battery_level": parsed_data.battery_level,
-            "range_km": parsed_data.range_km,
-            "odometer": parsed_data.odometer,
-            "battery_voltage": parsed_data.battery_voltage,
-            "battery_current": parsed_data.battery_current,
-            "battery_temp_max": parsed_data.battery_temp_max,
-            "battery_temp_min": parsed_data.battery_temp_min,
-            "tire_pressure_fl": parsed_data.tire_pressure_fl,
-            "tire_pressure_fr": parsed_data.tire_pressure_fr,
-            "tire_pressure_rl": parsed_data.tire_pressure_rl,
-            "tire_pressure_rr": parsed_data.tire_pressure_rr,
-            "last_charge_kwh": parsed_data.last_charge_kwh,
-            "last_charge_timestamp": parsed_data.last_charge_timestamp,
-            "vin": parsed_data.vin,
-            "vmodel": parsed_data.vmodel,
-            "last_timestamp": parsed_data.last_timestamp,
-        })
+        new_total_energy = round(total_energy, 3)
+        new_home_energy = round(home_energy, 3)
+        parsed_data.total_energy_charged_kwh = new_total_energy
+        parsed_data.home_energy_charged_kwh = new_home_energy
+        self._stored_cumulative["cumulative_total_energy_kwh"] = new_total_energy
+        self._stored_cumulative["cumulative_home_energy_kwh"] = new_home_energy
+        self._stored_cumulative["processed_session_ids"] = list(processed_session_ids)
+
+        # Monotonic Odometer: never decreases
+        stored_odo = self._stored_cumulative.get("odometer", 0.0) or 0.0
+        parsed_odo = parsed_data.odometer or 0.0
+        final_odo = max(stored_odo, parsed_odo)
+        parsed_data.odometer = final_odo if final_odo > 0 else None
+        if final_odo > 0:
+            self._stored_cumulative["odometer"] = final_odo
+
+        # Driving Hours
+        prev_driving = float(self._stored_cumulative.get("cumulative_driving_hours", 0.0))
+        new_driving = round(prev_driving + parsed_data.total_driving_hours, 2)
+        parsed_data.total_driving_hours = new_driving
+        self._stored_cumulative["cumulative_driving_hours"] = new_driving
+
+        # Timestamp Guard for Point-in-Time Telemetry (SoC, Range, Tires, Voltage, Temps)
+        stored_ts = self._stored_cumulative.get("last_timestamp")
+        is_newer = stored_ts is None or (parsed_data.last_timestamp and parsed_data.last_timestamp >= stored_ts)
+
+        if is_newer and parsed_data.last_timestamp:
+            self._stored_cumulative.update({
+                "last_timestamp": parsed_data.last_timestamp,
+                "battery_level": parsed_data.battery_level,
+                "range_km": parsed_data.range_km,
+                "battery_voltage": parsed_data.battery_voltage,
+                "battery_current": parsed_data.battery_current,
+                "battery_temp_max": parsed_data.battery_temp_max,
+                "battery_temp_min": parsed_data.battery_temp_min,
+                "tire_pressure_fl": parsed_data.tire_pressure_fl,
+                "tire_pressure_fr": parsed_data.tire_pressure_fr,
+                "tire_pressure_rl": parsed_data.tire_pressure_rl,
+                "tire_pressure_rr": parsed_data.tire_pressure_rr,
+                "vin": parsed_data.vin or self._stored_cumulative.get("vin"),
+                "vmodel": parsed_data.vmodel or self._stored_cumulative.get("vmodel"),
+            })
+            if parsed_data.last_charge_timestamp:
+                self._stored_cumulative["last_charge_kwh"] = parsed_data.last_charge_kwh
+                self._stored_cumulative["last_charge_timestamp"] = parsed_data.last_charge_timestamp
+        else:
+            _LOGGER.info(
+                "Parsed data timestamp (%s) is older than known state (%s); retaining latest vehicle telemetry",
+                parsed_data.last_timestamp,
+                stored_ts,
+            )
+            parsed_data.last_timestamp = stored_ts
+            parsed_data.battery_level = self._stored_cumulative.get("battery_level")
+            parsed_data.range_km = self._stored_cumulative.get("range_km")
+            parsed_data.battery_voltage = self._stored_cumulative.get("battery_voltage")
+            parsed_data.battery_current = self._stored_cumulative.get("battery_current")
+            parsed_data.battery_temp_max = self._stored_cumulative.get("battery_temp_max")
+            parsed_data.battery_temp_min = self._stored_cumulative.get("battery_temp_min")
+            parsed_data.tire_pressure_fl = self._stored_cumulative.get("tire_pressure_fl")
+            parsed_data.tire_pressure_fr = self._stored_cumulative.get("tire_pressure_fr")
+            parsed_data.tire_pressure_rl = self._stored_cumulative.get("tire_pressure_rl")
+            parsed_data.tire_pressure_rr = self._stored_cumulative.get("tire_pressure_rr")
+            parsed_data.vin = self._stored_cumulative.get("vin")
+            parsed_data.vmodel = self._stored_cumulative.get("vmodel")
+            parsed_data.last_charge_kwh = float(self._stored_cumulative.get("last_charge_kwh", 0.0))
+            parsed_data.last_charge_timestamp = self._stored_cumulative.get("last_charge_timestamp")
+
         await self._store.async_save(self._stored_cumulative)
 
         # 4. Retention / Cleanup: Remove processed files if enabled (via executor to avoid blocking event loop)

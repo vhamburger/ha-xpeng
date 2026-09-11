@@ -39,6 +39,7 @@
         "title": "XPENG Einstellungen anpassen",
         "data": {
           "vehicle_model": "Fahrzeugmodell",
+          "reset_energy": "Kumulierten Energiezähler zurücksetzen (Doppelzählungen korrigieren)",
           "cleanup_processed_files": "Dateien nach erfolgreichem Import löschen (Speicher sparen)",
           "home_charge_enabled": "Heimladungen an der Wallbox automatisch erkennen",
           "home_charge_min_power": "Minimale Ladeleistung für Wallbox (kW)",
@@ -89,6 +90,12 @@
       },
       "tire_pressure_rear_right": {
         "name": "Reifendruck Hinten Rechts"
+      },
+      "last_data_update": {
+        "name": "Letzte Datenaktualisierung"
+      },
+      "total_driving_time": {
+        "name": "Fahrzeit Gesamt"
       }
     },
     "button": {
