@@ -35,15 +35,14 @@ class XpengSyncButton(CoordinatorEntity[XpengDataUpdateCoordinator], ButtonEntit
             translation_key="sync_data",
             icon="mdi:sync",
         )
-        vin = coordinator.data.vin if coordinator.data and coordinator.data.vin else coordinator.entry.entry_id
-        self._attr_unique_id = f"{vin}_sync_data"
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_sync_data"
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return information about the vehicle device."""
-        vin = self.coordinator.data.vin if self.coordinator.data and self.coordinator.data.vin else self.coordinator.entry.entry_id
+        vin = self.coordinator.data.vin if self.coordinator.data and self.coordinator.data.vin else None
         return DeviceInfo(
-            identifiers={(DOMAIN, vin)},
+            identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
             name=self.coordinator.vehicle_name,
             manufacturer="XPENG",
             model=self.coordinator.resolved_model,

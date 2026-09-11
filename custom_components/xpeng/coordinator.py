@@ -176,13 +176,29 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
             # If no new files were found, retain last known state
             if self.data is not None:
                 return self.data
-            # Initial state if no files exist yet
-            initial = XpengParsedData()
-            initial.total_energy_charged_kwh = self._stored_cumulative.get("cumulative_total_energy_kwh", 0.0)
-            initial.home_energy_charged_kwh = self._stored_cumulative.get("cumulative_home_energy_kwh", 0.0)
-            return initial
+            # Restore previous state from storage if available
+            restored = XpengParsedData()
+            restored.total_energy_charged_kwh = self._stored_cumulative.get("cumulative_total_energy_kwh", 0.0)
+            restored.home_energy_charged_kwh = self._stored_cumulative.get("cumulative_home_energy_kwh", 0.0)
+            restored.battery_level = self._stored_cumulative.get("battery_level")
+            restored.range_km = self._stored_cumulative.get("range_km")
+            restored.odometer = self._stored_cumulative.get("odometer")
+            restored.battery_voltage = self._stored_cumulative.get("battery_voltage")
+            restored.battery_current = self._stored_cumulative.get("battery_current")
+            restored.battery_temp_max = self._stored_cumulative.get("battery_temp_max")
+            restored.battery_temp_min = self._stored_cumulative.get("battery_temp_min")
+            restored.tire_pressure_fl = self._stored_cumulative.get("tire_pressure_fl")
+            restored.tire_pressure_fr = self._stored_cumulative.get("tire_pressure_fr")
+            restored.tire_pressure_rl = self._stored_cumulative.get("tire_pressure_rl")
+            restored.tire_pressure_rr = self._stored_cumulative.get("tire_pressure_rr")
+            restored.last_charge_kwh = self._stored_cumulative.get("last_charge_kwh")
+            restored.last_charge_timestamp = self._stored_cumulative.get("last_charge_timestamp")
+            restored.vin = self._stored_cumulative.get("vin")
+            restored.vmodel = self._stored_cumulative.get("vmodel")
+            restored.last_timestamp = self._stored_cumulative.get("last_timestamp")
+            return restored
 
-        # 3. Accumulate Energy
+        # 3. Accumulate Energy & Update Persistent Telemetry
         prev_total = self._stored_cumulative.get("cumulative_total_energy_kwh", 0.0)
         prev_home = self._stored_cumulative.get("cumulative_home_energy_kwh", 0.0)
 
@@ -193,29 +209,51 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
         parsed_data.total_energy_charged_kwh = new_total
         parsed_data.home_energy_charged_kwh = new_home
 
-        self._stored_cumulative["cumulative_total_energy_kwh"] = new_total
-        self._stored_cumulative["cumulative_home_energy_kwh"] = new_home
+        self._stored_cumulative.update({
+            "cumulative_total_energy_kwh": new_total,
+            "cumulative_home_energy_kwh": new_home,
+            "battery_level": parsed_data.battery_level,
+            "range_km": parsed_data.range_km,
+            "odometer": parsed_data.odometer,
+            "battery_voltage": parsed_data.battery_voltage,
+            "battery_current": parsed_data.battery_current,
+            "battery_temp_max": parsed_data.battery_temp_max,
+            "battery_temp_min": parsed_data.battery_temp_min,
+            "tire_pressure_fl": parsed_data.tire_pressure_fl,
+            "tire_pressure_fr": parsed_data.tire_pressure_fr,
+            "tire_pressure_rl": parsed_data.tire_pressure_rl,
+            "tire_pressure_rr": parsed_data.tire_pressure_rr,
+            "last_charge_kwh": parsed_data.last_charge_kwh,
+            "last_charge_timestamp": parsed_data.last_charge_timestamp,
+            "vin": parsed_data.vin,
+            "vmodel": parsed_data.vmodel,
+            "last_timestamp": parsed_data.last_timestamp,
+        })
         await self._store.async_save(self._stored_cumulative)
 
-        # 4. Retention / Cleanup: Remove processed files if enabled
+        # 4. Retention / Cleanup: Remove processed files if enabled (via executor to avoid blocking event loop)
         if self.cleanup_files and processed_files:
-            _LOGGER.info("Cleaning up %d processed XPENG CSV/ZIP files to save disk space", len(processed_files))
-            for file_path in processed_files:
-                try:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                        _LOGGER.debug("Removed processed file: %s", file_path)
-                except Exception as err:
-                    _LOGGER.error("Failed to delete processed file %s: %s", file_path, err)
-
-            # Also remove any empty subdirectories left behind by zip extraction
-            for root, dirs, _ in os.walk(self.data_dir, topdown=False):
-                for d in dirs:
-                    d_path = os.path.join(root, d)
-                    try:
-                        if not os.listdir(d_path):
-                            os.rmdir(d_path)
-                    except Exception:
-                        pass
+            await self.hass.async_add_executor_job(self._cleanup_processed, processed_files)
 
         return parsed_data
+
+    def _cleanup_processed(self, processed_files: list[str]) -> None:
+        """Clean up processed files and empty directories in executor thread."""
+        _LOGGER.info("Cleaning up %d processed XPENG CSV/ZIP files to save disk space", len(processed_files))
+        for file_path in processed_files:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    _LOGGER.debug("Removed processed file: %s", file_path)
+            except Exception as err:
+                _LOGGER.error("Failed to delete processed file %s: %s", file_path, err)
+
+        # Also remove any empty subdirectories left behind by zip extraction
+        for root, dirs, _ in os.walk(self.data_dir, topdown=False):
+            for d in dirs:
+                d_path = os.path.join(root, d)
+                try:
+                    if not os.listdir(d_path):
+                        os.rmdir(d_path)
+                except Exception:
+                    pass

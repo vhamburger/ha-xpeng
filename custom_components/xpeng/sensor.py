@@ -183,8 +183,7 @@ class XpengSensorEntity(CoordinatorEntity[XpengDataUpdateCoordinator], SensorEnt
         """Initialize the sensor."""
         super().__init__(coordinator)
         self.entity_description = description
-        unique_id_prefix = coordinator.data.vin if coordinator.data and coordinator.data.vin else coordinator.entry.entry_id
-        self._attr_unique_id = f"{unique_id_prefix}_{description.key}"
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_{description.key}"
 
     @property
     def native_value(self) -> Any:
@@ -196,9 +195,9 @@ class XpengSensorEntity(CoordinatorEntity[XpengDataUpdateCoordinator], SensorEnt
     @property
     def device_info(self) -> DeviceInfo:
         """Return information about the vehicle device."""
-        vin = self.coordinator.data.vin if self.coordinator.data and self.coordinator.data.vin else self.coordinator.entry.entry_id
+        vin = self.coordinator.data.vin if self.coordinator.data and self.coordinator.data.vin else None
         return DeviceInfo(
-            identifiers={(DOMAIN, vin)},
+            identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
             name=self.coordinator.vehicle_name,
             manufacturer="XPENG",
             model=self.coordinator.resolved_model,
