@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="XPENG Logo" width="300">
+  <img src="https://raw.githubusercontent.com/vhamburger/ha-xpeng/main/logo.png" alt="XPENG Logo" width="300">
 </p>
 
 # XPENG Vehicles Integration for Home Assistant
