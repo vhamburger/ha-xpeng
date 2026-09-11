@@ -100,5 +100,14 @@ Click **Configure** on the integration card at any time to adjust:
 
 ---
 
+## ⚠️ Disclaimer
+
+This is a private, community-developed open-source integration. It is **not affiliated with, endorsed by, maintained by, or in any way officially connected to XPENG Inc. (Guangzhou Xiaopeng Motors Technology Co., Ltd.)** or any of its subsidiaries or affiliates.
+
+All product names, trademarks, logos, and brands are the property of their respective owners. They are used here solely for identification and interoperability purposes under fair use.
+
+---
+
 ## 📄 License
 MIT License
+
