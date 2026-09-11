@@ -181,7 +181,9 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
             restored = XpengParsedData()
             restored.total_energy_charged_kwh = float(self._stored_cumulative.get("cumulative_total_energy_kwh", 0.0))
             restored.home_energy_charged_kwh = float(self._stored_cumulative.get("cumulative_home_energy_kwh", 0.0))
-            restored.total_driving_hours = float(self._stored_cumulative.get("cumulative_driving_hours", 0.0))
+            restored.driving_seconds = int(self._stored_cumulative.get("cumulative_driving_seconds", 0))
+            restored.driving_rolling_seconds = int(self._stored_cumulative.get("cumulative_rolling_seconds", 0))
+            restored.total_driving_hours = round(restored.driving_seconds / 3600.0, 2)
             restored.odometer = self._stored_cumulative.get("odometer")
             restored.battery_level = self._stored_cumulative.get("battery_level")
             restored.range_km = self._stored_cumulative.get("range_km")
@@ -202,10 +204,18 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
 
         # Check if reset energy was requested in options
         if self.entry.options.get(CONF_RESET_ENERGY, False):
-            _LOGGER.info("Resetting cumulative energy meter as requested in options")
+            _LOGGER.info("Resetting cumulative energy & driving meters as requested in options")
             self._stored_cumulative["cumulative_total_energy_kwh"] = 0.0
             self._stored_cumulative["cumulative_home_energy_kwh"] = 0.0
             self._stored_cumulative["processed_session_ids"] = []
+            self._stored_cumulative["cumulative_driving_seconds"] = 0
+            self._stored_cumulative["cumulative_rolling_seconds"] = 0
+            self._stored_cumulative["processed_trip_ids"] = []
+            self._stored_cumulative.pop("cumulative_driving_hours", None)
+            await self._store.async_save(self._stored_cumulative)
+            new_options = dict(self.entry.options)
+            new_options[CONF_RESET_ENERGY] = False
+            self.hass.config_entries.async_update_entry(self.entry, options=new_options)
 
         # 3. Energy Session Deduplication
         processed_session_ids = set(self._stored_cumulative.get("processed_session_ids", []))
@@ -239,11 +249,26 @@ class XpengDataUpdateCoordinator(DataUpdateCoordinator[XpengParsedData]):
         if final_odo > 0:
             self._stored_cumulative["odometer"] = final_odo
 
-        # Driving Hours
-        prev_driving = float(self._stored_cumulative.get("cumulative_driving_hours", 0.0))
-        new_driving = round(prev_driving + parsed_data.total_driving_hours, 2)
-        parsed_data.total_driving_hours = new_driving
-        self._stored_cumulative["cumulative_driving_hours"] = new_driving
+        # 4. Driving Trip Deduplication
+        processed_trip_ids = set(self._stored_cumulative.get("processed_trip_ids", []))
+        total_driving_secs = int(self._stored_cumulative.get("cumulative_driving_seconds", 0))
+        total_rolling_secs = int(self._stored_cumulative.get("cumulative_rolling_seconds", 0))
+
+        for trip in parsed_data.driving_trips:
+            trip_id = f"{trip.start_timestamp}_{trip.end_timestamp}"
+            if trip_id in processed_trip_ids:
+                continue
+            processed_trip_ids.add(trip_id)
+            total_driving_secs += trip.duration_seconds
+            total_rolling_secs += trip.rolling_seconds
+
+        driving_hours = round(total_driving_secs / 3600.0, 2)
+        parsed_data.total_driving_hours = driving_hours
+        parsed_data.driving_seconds = total_driving_secs
+        parsed_data.driving_rolling_seconds = total_rolling_secs
+        self._stored_cumulative["cumulative_driving_seconds"] = total_driving_secs
+        self._stored_cumulative["cumulative_rolling_seconds"] = total_rolling_secs
+        self._stored_cumulative["processed_trip_ids"] = list(processed_trip_ids)
 
         # Timestamp Guard for Point-in-Time Telemetry (SoC, Range, Tires, Voltage, Temps)
         stored_ts = self._stored_cumulative.get("last_timestamp")

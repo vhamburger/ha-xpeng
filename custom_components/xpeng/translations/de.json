@@ -39,7 +39,7 @@
         "title": "XPENG Einstellungen anpassen",
         "data": {
           "vehicle_model": "Fahrzeugmodell",
-          "reset_energy": "Kumulierten Energiezähler zurücksetzen (Doppelzählungen korrigieren)",
+          "reset_energy": "Kumulierte Zähler zurücksetzen (Energie & Fahrzeit bei Duplikaten neu berechnen)",
           "cleanup_processed_files": "Dateien nach erfolgreichem Import löschen (Speicher sparen)",
           "home_charge_enabled": "Heimladungen an der Wallbox automatisch erkennen",
           "home_charge_min_power": "Minimale Ladeleistung für Wallbox (kW)",

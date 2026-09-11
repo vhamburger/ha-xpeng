@@ -223,6 +223,16 @@ class XpengSensorEntity(CoordinatorEntity[XpengDataUpdateCoordinator], SensorEnt
                 "data_source": self.coordinator.mode,
                 "raw_timestamp": data.last_timestamp,
             }
+        if self.entity_description.key == "total_driving_time" and self.coordinator.data:
+            data = self.coordinator.data
+            rolling_hours = round(data.driving_rolling_seconds / 3600.0, 2) if data.driving_rolling_seconds else 0.0
+            stopped_hours = round(max(0, data.driving_seconds - data.driving_rolling_seconds) / 3600.0, 2) if data.driving_seconds else 0.0
+            trip_ids = self.coordinator._stored_cumulative.get("processed_trip_ids", [])
+            return {
+                "rolling_time_hours": rolling_hours,
+                "stopped_time_hours": stopped_hours,
+                "trips_count": len(trip_ids) if trip_ids else len(data.driving_trips),
+            }
         return None
 
     @property

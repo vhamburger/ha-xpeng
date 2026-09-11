@@ -36,6 +36,16 @@ class ChargingSession:
 
 
 @dataclass
+class DrivingTrip:
+    """Represents a discrete driving trip."""
+
+    start_timestamp: int
+    end_timestamp: int
+    duration_seconds: int
+    rolling_seconds: int
+
+
+@dataclass
 class XpengParsedData:
     """Aggregated parsed vehicle data from all CSV exports."""
 
@@ -76,7 +86,9 @@ class XpengParsedData:
     charging_sessions: list[ChargingSession] = field(default_factory=list)
 
     # Driving
+    driving_trips: list[DrivingTrip] = field(default_factory=list)
     driving_seconds: int = 0
+    driving_rolling_seconds: int = 0
     total_driving_hours: float = 0.0
 
 
@@ -168,6 +180,8 @@ class XpengCsvParser:
                 self._parse_status(s_file, data)
                 processed_files.append(s_file)
 
+        data.driving_seconds = sum(t.duration_seconds for t in data.driving_trips)
+        data.driving_rolling_seconds = sum(t.rolling_seconds for t in data.driving_trips)
         data.total_driving_hours = round(data.driving_seconds / 3600.0, 2)
 
         return data, list(set(processed_files))
@@ -361,28 +375,85 @@ class XpengCsvParser:
         data.last_charge_timestamp = end_ts
 
     def _parse_operation(self, file_path: str, data: XpengParsedData) -> None:
-        """Parse driving_operation CSV file (odometer, speed, driving time)."""
+        """Parse driving_operation CSV file (odometer, speed, discrete driving trips)."""
         _LOGGER.debug("Parsing operation file: %s", file_path)
+        current_start: int | None = None
+        trip_secs = 0
+        trip_rolling_secs = 0
+        last_ts = 0
+
         with open(file_path, mode="r", encoding="utf-8-sig", errors="replace") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 ts_str = row.get("timer")
+                ts = 0
                 if ts_str:
                     try:
                         ts = int(ts_str)
                         if data.last_timestamp is None or ts > data.last_timestamp:
                             data.last_timestamp = ts
                     except ValueError:
-                        pass
+                        ts = 0
 
-                # Track active driving time: 1 row per second when speed > 0.5 km/h
+                # Speed
                 spd_str = row.get("esp_vehspd")
+                spd = 0.0
                 if spd_str:
                     try:
-                        if float(spd_str) > 0.5:
-                            data.driving_seconds += 1
+                        spd = float(spd_str)
                     except ValueError:
-                        pass
+                        spd = 0.0
+
+                # Ignore invalid CAN-SNA sentinel (255.0 / 0xFF)
+                if spd >= 250.0:
+                    spd = 0.0
+
+                # Gear: 1.0=D (Drive), 2.0=N (Neutral), 3.0=R (Reverse), 4.0=P (Park)
+                gear = row.get("ldcu_currentgearlev")
+                if gear:
+                    in_gear = gear in ("1.0", "2.0", "3.0")
+                else:
+                    in_gear = spd > 0.5
+
+                if in_gear and ts > 0:
+                    if current_start is None:
+                        current_start = ts
+                        trip_secs = 0
+                        trip_rolling_secs = 0
+                    elif last_ts and (ts - last_ts) > 120:
+                        # Time gap > 2 min: finalize trip
+                        if trip_secs >= 10:
+                            data.driving_trips.append(
+                                DrivingTrip(
+                                    start_timestamp=current_start,
+                                    end_timestamp=last_ts,
+                                    duration_seconds=trip_secs,
+                                    rolling_seconds=trip_rolling_secs,
+                                )
+                            )
+                        current_start = ts
+                        trip_secs = 0
+                        trip_rolling_secs = 0
+
+                    trip_secs += 1
+                    if spd > 0.5:
+                        trip_rolling_secs += 1
+                    last_ts = ts
+                else:
+                    # Vehicle parked or not in drive gear
+                    if current_start is not None:
+                        if trip_secs >= 10:
+                            data.driving_trips.append(
+                                DrivingTrip(
+                                    start_timestamp=current_start,
+                                    end_timestamp=last_ts if last_ts else ts,
+                                    duration_seconds=trip_secs,
+                                    rolling_seconds=trip_rolling_secs,
+                                )
+                            )
+                        current_start = None
+                        trip_secs = 0
+                        trip_rolling_secs = 0
 
                 # Monotonic odometer
                 odo_str = row.get("cdcu_totalodometer")
@@ -393,6 +464,17 @@ class XpengCsvParser:
                             data.odometer = odo
                     except ValueError:
                         pass
+
+            # Finalize open trip at EOF
+            if current_start is not None and trip_secs >= 10:
+                data.driving_trips.append(
+                    DrivingTrip(
+                        start_timestamp=current_start,
+                        end_timestamp=last_ts if last_ts else current_start + trip_secs,
+                        duration_seconds=trip_secs,
+                        rolling_seconds=trip_rolling_secs,
+                    )
+                )
 
     def _parse_status(self, file_path: str, data: XpengParsedData) -> None:
         """Parse driving_status CSV file (tire pressures, doors)."""
